@@ -1,5 +1,6 @@
 import '../assets/css/App.css';
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
+import PropTypes from 'prop-types';
 import { makeStyles } from '@material-ui/core/styles';
 import {
   Button, TextField, Typography, Tooltip, Switch, FormGroup, FormControlLabel,
@@ -30,82 +31,117 @@ const useStyles = makeStyles((theme) => ({
     verticalAlign: 'bottom',
     color: 'grey',
   },
-  modal: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
+  iconHolder: {
+    width: 64,
+    height: 64,
+    border: '1px solid black',
   },
 }));
 
 
-export default function AddModal(props) {
+export default function ShortCutForm(props) {
   const {
-    existingNames, onCancel, onCreate,
+    type, icon, name, label, command, description, existingNames, onCancel, onSubmit, dirEnv, dirBkgEnv, fileEnv, deskEnv,
   } = props;
-  const [pname, setPname] = useState('');
-  const [plabel, setPlabel] = useState('');
-  const [pcommand, setPcommand] = useState('');
-  const [pdescription, setPdescription] = useState('');
-  const [pdirEnv, setPdirEnv] = useState(true);
-  const [pdirBkgEnv, setPdirBkgEnv] = useState(false);
-  const [pfileEnv, setPfileEnv] = useState(false);
-  const [pdeskEnv, setPdeskEnv] = useState(false);
+  const [picon, setPicon] = useState(icon);
+  const [pname, setPname] = useState(name);
+  const [plabel, setPlabel] = useState(label);
+  const [pcommand, setPcommand] = useState(command);
+  const [pdescription, setPdescription] = useState(description);
+  const [pdirEnv, setPdirEnv] = useState(dirEnv);
+  const [pdirBkgEnv, setPdirBkgEnv] = useState(dirBkgEnv);
+  const [pfileEnv, setPfileEnv] = useState(fileEnv);
+  const [pdeskEnv, setPdeskEnv] = useState(deskEnv);
+  const inputEl = useRef(null);
   const classes = useStyles();
+  const nameError = pname.length && ((existingNames.includes(pname) && pname !== name)) ? 'This name is already used by another shortcut!' : null;
   return (
     <div className={classes.root}>
+      <input
+        ref={inputEl}
+        style={{
+          display: 'none',
+        }}
+        id="file-button"
+        type="file"
+        accept="image/x-icon"
+        onChange={(e) => {
+          const reader = new FileReader();
+          reader.onload = (ev) => {
+            setPicon(ev.target.result);
+          };
+          reader.readAsDataURL(e.target.files[0]);
+          e.target.value = '';
+        }}
+      />
       <div className={classes.paper}>
         <Typography variant="h4">
-          New shortcut
+          {type === 'add' ? 'New shortcut' : 'Edit shortcut'}
         </Typography>
         <div className={classes.fieldsCont}>
+          <div
+            style={{ display: 'inline-block' }}
+            onClick={() => inputEl.current.click()}
+            className={classes.iconHolder}
+          >
+            {!picon ? null : <img height={64} alt="icon" src={picon} />}
+          </div>
+          <Button
+            onClick={() => inputEl.current.click()}
+            style={{ verticalAlign: 'bottom', marginLeft: 10 }}
+          >
+            Select icon (64x64)
+          </Button>
           <div>
             <TextField
-              label="Name"
-              onChange={(e) => setPname(e.target.value.trim().replace(/[^a-zA-Z0-9]/g, ''))}
+              onChange={(e) => setPname(e.target.value.trim().replace(/[^a-zA-Z0-9_]/g, ''))}
               required
-              placeholder="Enter a name"
+              placeholder="Enter a context menu label"
+              label="Name"
               value={pname}
+              error={nameError !== null}
+              helperText={nameError}
             />
             <Tooltip className={classes.toolTip} title="Unique name for your shortcut" aria-label="name">
-              <HelpIcon />
+              <HelpIcon fontSize="small" />
             </Tooltip>
           </div>
           <div>
             <TextField
               label="Label"
-              style={{ width: 300 }}
-              onChange={(e) => setPlabel(e.target.value.trim().replace(/[^a-zA-Z0-9 ]/g, ''))}
+              style={{ marginTop: 10, width: 300 }}
+              onChange={(e) => setPlabel(e.target.value.trimStart().replace(/[^a-zA-Z0-9 ]/g, ''))}
               required
               placeholder="Enter a context menu label"
               value={plabel}
             />
             <Tooltip className={classes.toolTip} title="Label displayed on the right-click context menu" aria-label="label">
-              <HelpIcon />
+              <HelpIcon fontSize="small" />
             </Tooltip>
           </div>
           <div>
             <TextField
               label="Command"
-              style={{ width: 500 }}
+              style={{ marginTop: 10, width: 500 }}
               onChange={(e) => setPcommand(e.target.value.trim())}
               required
               placeholder="Enter a command"
               value={pcommand}
             />
             <Tooltip className={classes.toolTip} title={'Command called when the shortcut is clicked. Each block of commands / arguments should be double-quoted. Example: "path/to/app.exe" "arg1" "arg2"...'} aria-label="label">
-              <HelpIcon />
+              <HelpIcon fontSize="small" />
             </Tooltip>
           </div>
           <div>
             <TextField
               label="Description"
-              style={{ width: 500 }}
+              style={{ marginTop: 10, width: 500 }}
               onChange={(e) => setPdescription(e.target.value.trim())}
               placeholder="Enter a description"
               value={pdescription}
             />
             <Tooltip className={classes.toolTip} title="Description for your shortcut" aria-label="label">
-              <HelpIcon />
+              <HelpIcon fontSize="small" />
             </Tooltip>
           </div>
           <Typography style={{ marginTop: 20 }}>
@@ -128,12 +164,16 @@ export default function AddModal(props) {
                     }}
                     color="primary"
                   />
-          )}
+            )}
                 label={(
                   <span style={{ color: !pdirEnv ? 'grey' : 'blue' }}>
-                    <FolderIcon />
+                    <FolderIcon style={{ verticalAlign: 'bottom' }} />
                     {' '}
                     Directory
+                    {' '}
+                    <Tooltip style={{ verticalAlign: 'bottom' }} className={classes.toolTip} title="Right-click on a directory item" aria-label="name">
+                      <HelpIcon fontSize="small" />
+                    </Tooltip>
                   </span>
 )}
               />
@@ -152,12 +192,16 @@ export default function AddModal(props) {
                     }}
                     color="primary"
                   />
-            )}
+              )}
                 label={(
                   <span style={{ color: !pdirBkgEnv ? 'grey' : 'blue' }}>
-                    <PermMediaIcon />
+                    <PermMediaIcon style={{ verticalAlign: 'bottom' }} />
                     {' '}
                     Directory background
+                    {' '}
+                    <Tooltip style={{ verticalAlign: 'bottom' }} className={classes.toolTip} title="Right-click on a directory background" aria-label="name">
+                      <HelpIcon fontSize="small" />
+                    </Tooltip>
                   </span>
 )}
               />
@@ -176,12 +220,16 @@ export default function AddModal(props) {
                     }}
                     color="primary"
                   />
-            )}
+              )}
                 label={(
                   <span style={{ color: !pfileEnv ? 'grey' : 'blue' }}>
-                    <FileCopyIcon />
+                    <FileCopyIcon style={{ verticalAlign: 'bottom' }} />
                     {' '}
                     Files
+                    {' '}
+                    <Tooltip style={{ verticalAlign: 'bottom' }} className={classes.toolTip} title="Right-click on a file item" aria-label="name">
+                      <HelpIcon fontSize="small" />
+                    </Tooltip>
                   </span>
 )}
               />
@@ -200,12 +248,16 @@ export default function AddModal(props) {
                     }}
                     color="primary"
                   />
-            )}
+              )}
                 label={(
                   <span style={{ color: !pdeskEnv ? 'grey' : 'blue' }}>
-                    <DesktopWindowsIcon />
+                    <DesktopWindowsIcon style={{ verticalAlign: 'bottom' }} />
                     {' '}
                     Desktop
+                    {' '}
+                    <Tooltip style={{ verticalAlign: 'bottom' }} className={classes.toolTip} title="Right-click on the desktop" aria-label="name">
+                      <HelpIcon fontSize="small" />
+                    </Tooltip>
                   </span>
 )}
               />
@@ -215,14 +267,14 @@ export default function AddModal(props) {
         <Button
           color="primary"
           onClick={() => {
-            onCreate({
-              name: pname, label: plabel, command: pcommand, description: pdescription, dirEnv: pdirEnv, dirBkgEnv: pdirBkgEnv, fileEnv: pfileEnv, deskEnv: pdeskEnv,
+            onSubmit({
+              icon: picon, name: pname, label: plabel.trimEnd(), command: pcommand, description: pdescription, dirEnv: pdirEnv, dirBkgEnv: pdirBkgEnv, fileEnv: pfileEnv, deskEnv: pdeskEnv,
             });
           }}
           variant="contained"
-          disabled={(existingNames.includes(pname) || pname === '') || (plabel === '') || (pcommand === '')}
+          disabled={((existingNames.includes(pname) && pname !== name) || pname === '') || (plabel === '') || (pcommand === '')}
         >
-          Create
+          {type === 'add' ? 'Create' : 'Edit'}
         </Button>
         {' '}
         <Button
@@ -230,7 +282,7 @@ export default function AddModal(props) {
             onCancel();
           }}
           variant="contained"
-          style={{ backgroundColor: 'red', color: 'white' }}
+          color="secondary"
         >
           Cancel
         </Button>
@@ -238,3 +290,29 @@ export default function AddModal(props) {
     </div>
   );
 }
+ShortCutForm.propTypes = {
+  type: PropTypes.string.isRequired,
+  icon: PropTypes.string,
+  name: PropTypes.string,
+  label: PropTypes.string,
+  command: PropTypes.string,
+  description: PropTypes.string,
+  existingNames: PropTypes.arrayOf(PropTypes.string).isRequired,
+  dirEnv: PropTypes.bool,
+  dirBkgEnv: PropTypes.bool,
+  fileEnv: PropTypes.bool,
+  deskEnv: PropTypes.bool,
+  onCancel: PropTypes.func.isRequired,
+  onSubmit: PropTypes.func.isRequired,
+};
+ShortCutForm.defaultProps = {
+  icon: null,
+  name: '',
+  label: '',
+  command: '',
+  description: '',
+  dirEnv: true,
+  dirBkgEnv: false,
+  fileEnv: false,
+  deskEnv: false,
+};

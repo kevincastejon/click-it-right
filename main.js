@@ -1,5 +1,6 @@
 // Import parts of electron to use
 const path = require('path');
+const fs = require('fs').promises;
 const regedit = require('regedit');
 const {
   ipcMain, app, BrowserWindow, Menu,
@@ -88,9 +89,11 @@ function createWindow() {
   // Create the browser window.
   mainWindow = new BrowserWindow({
     width: 1024,
+    minWidth: 700,
     height: 768,
+    minHeight: 600,
     show: false,
-    title: 'Electron React Starter App',
+    title: 'Click-it right!',
     webPreferences: {
       nodeIntegration: true,
     },
@@ -152,6 +155,11 @@ function createWindow() {
   ];
 
   // Add your IPC listeners here
+  async function ensureDir() {
+    fs.stat(path.resolve(app.getPath('userData'), 'icons')).catch(async () => {
+      await fs.mkdir(path.resolve(app.getPath('userData'), 'icons'));
+    });
+  }
   async function addKey(type, key) {
     await addReg(`${types[type]}\\REGCJS_${key.name}\\command`);
     const newKey = { };
@@ -159,6 +167,10 @@ function createWindow() {
     newKey[`${types[type]}\\REGCJS_${key.name}`].qzd = {
       value: key.label,
       type: 'REG_DEFAULT',
+    };
+    newKey[`${types[type]}\\REGCJS_${key.name}`].Icon = {
+      value: key.icon ? path.resolve(app.getPath('userData'), 'icons', `${key.name}.ico`) : '',
+      type: 'REG_SZ',
     };
     newKey[`${types[type]}\\REGCJS_${key.name}`].description = {
       value: key.description,
@@ -174,6 +186,10 @@ function createWindow() {
     await putReg(newCmdKey);
   }
   async function addAllKeys(key) {
+    if (key.icon) {
+      const iconBase = key.icon.split(';base64,').pop();
+      await fs.writeFile(path.resolve(app.getPath('userData'), 'icons', `${key.name}.ico`), iconBase, { encoding: 'base64' });
+    }
     if (key.dirEnv) {
       await addKey('dir', key);
     }
@@ -191,17 +207,20 @@ function createWindow() {
     await delReg(`${types[type]}\\REGCJS_${keyname}\\command`);
     await delReg(`${types[type]}\\REGCJS_${keyname}`);
   }
-  async function deleteAllKeys(key, force = false) {
-    if (key.dirEnv || force) {
+  async function deleteAllKeys(key) {
+    if (key.icon) {
+      await fs.unlink(path.resolve(app.getPath('userData'), 'icons', `${key.name}.ico`));
+    }
+    if (key.dirEnv) {
       await deleteKey('dir', key.name);
     }
-    if (key.dirBkgEnv || force) {
+    if (key.dirBkgEnv) {
       await deleteKey('dirBkg', key.name);
     }
-    if (key.fileEnv || force) {
+    if (key.fileEnv) {
       await deleteKey('file', key.name);
     }
-    if (key.deskEnv || force) {
+    if (key.deskEnv) {
       await deleteKey('desk', key.name);
     }
   }
@@ -213,11 +232,12 @@ function createWindow() {
       e.sender.send('onError', err.message);
     }
   });
-  ipcMain.on('editKey', async (e, key) => {
+  ipcMain.on('editKey', async (e, oldkey, key) => {
     try {
-      await deleteAllKeys(key, true);
+      await ensureDir();
+      await deleteAllKeys(oldkey);
     } catch (err) {
-      // console.log(err);
+      e.sender.send('onError', err.message);
     }
     try {
       await addAllKeys(key);
@@ -229,6 +249,7 @@ function createWindow() {
 
   ipcMain.on('addKey', async (e, key) => {
     try {
+      await ensureDir();
       await addAllKeys(key);
       e.sender.send('keyAdded');
     } catch (err) {
@@ -238,6 +259,7 @@ function createWindow() {
 
   ipcMain.on('getKeys', async (e) => {
     try {
+      await ensureDir();
       const rawkeys = {};
       rawkeys[keyPaths[0]] = (await listReg(keyPaths[0]))[keyPaths[0]];
       rawkeys[keyPaths[1]] = (await listReg(keyPaths[1]))[keyPaths[1]];
@@ -248,36 +270,41 @@ function createWindow() {
       const rawFile = rawkeys[types.file].keys.filter((k) => (k.substring(0, 7) === 'REGCJS_'));
       const rawDesk = rawkeys[types.desk].keys.filter((k) => (k.substring(0, 7) === 'REGCJS_'));
       const dirKeys = await Promise.all(rawDir.map(async (subkey) => ({
+        icon: (await listReg([`${types.dir}\\${subkey}`]))[`${types.dir}\\${subkey}`].values.Icon.value,
         name: subkey.substring(7, subkey.length),
         label: (await listReg([`${types.dir}\\${subkey}`]))[`${types.dir}\\${subkey}`].values[''].value,
         description: (await listReg([`${types.dir}\\${subkey}`]))[`${types.dir}\\${subkey}`].values.description.value,
         command: (await listReg([`${types.dir}\\${subkey}\\command`]))[`${types.dir}\\${subkey}\\command`].values[''].value,
       })));
       const dirBkgKeys = await Promise.all(rawDirBkg.map(async (subkey) => ({
+        icon: (await listReg([`${types.dirBkg}\\${subkey}`]))[`${types.dirBkg}\\${subkey}`].values.Icon.value,
         name: subkey.substring(7, subkey.length),
         label: (await listReg([`${types.dirBkg}\\${subkey}`]))[`${types.dirBkg}\\${subkey}`].values[''].value,
         description: (await listReg([`${types.dirBkg}\\${subkey}`]))[`${types.dirBkg}\\${subkey}`].values.description.value,
         command: (await listReg([`${types.dirBkg}\\${subkey}\\command`]))[`${types.dirBkg}\\${subkey}\\command`].values[''].value,
       })));
       const fileKeys = await Promise.all(rawFile.map(async (subkey) => ({
+        icon: (await listReg([`${types.file}\\${subkey}`]))[`${types.file}\\${subkey}`].values.Icon.value,
         name: subkey.substring(7, subkey.length),
         label: (await listReg([`${types.file}\\${subkey}`]))[`${types.file}\\${subkey}`].values[''].value,
         description: (await listReg([`${types.file}\\${subkey}`]))[`${types.file}\\${subkey}`].values.description.value,
         command: (await listReg([`${types.file}\\${subkey}\\command`]))[`${types.file}\\${subkey}\\command`].values[''].value,
       })));
       const deskKeys = await Promise.all(rawDesk.map(async (subkey) => ({
+        icon: (await listReg([`${types.desk}\\${subkey}`]))[`${types.desk}\\${subkey}`].values.Icon.value,
         name: subkey.substring(7, subkey.length),
         label: (await listReg([`${types.desk}\\${subkey}`]))[`${types.desk}\\${subkey}`].values[''].value,
         description: (await listReg([`${types.desk}\\${subkey}`]))[`${types.desk}\\${subkey}`].values.description.value,
         command: (await listReg([`${types.desk}\\${subkey}\\command`]))[`${types.desk}\\${subkey}\\command`].values[''].value,
       })));
       const deepkeys = [dirKeys, dirBkgKeys, fileKeys, deskKeys];
-      const keys = deepkeys.reduce((acc, current, i) => {
+      const keys = await Promise.resolve(deepkeys.reduce(async (acc, current, i) => {
         for (let j = 0; j < current.length; j += 1) {
           const k = current[j];
           const foundId = acc.findIndex((elt) => elt.name === k.name);
           if (foundId === -1) {
             const obj = {
+              icon: k.icon.length > 0 ? `${'data:image/x-icon;base64,'}${(await fs.readFile(k.icon)).toString('base64')}` : null,
               name: k.name,
               label: k.label,
               description: k.description,
@@ -294,7 +321,7 @@ function createWindow() {
           }
         }
         return acc;
-      }, []);
+      }, []));
       keys.sort((a, b) => a.name.localeCompare(b.name));
       e.sender.send('onKeys', keys);
     } catch (err) {

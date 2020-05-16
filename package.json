@@ -1,18 +1,18 @@
 {
-  "name": "reg-context-js",
+  "name": "right-click-it",
   "version": "1.0.0",
-  "description": "Electron React Starter App",
+  "description": "Destop windows app to easily create context menu shotcuts",
   "author": "kevincastejon",
-  "homepage": "https://github.com/kevincastejon/reg-context-js",
+  "homepage": "https://github.com/kevincastejon/right-click-it",
   "repository": {
     "type": "git",
-    "url": "https://github.com/kevincastejon/reg-context-js.git"
+    "url": "https://github.com/kevincastejon/right-click-it.git"
   },
   "license": "MIT",
   "main": "main.js",
   "build": {
-    "productName": "Reg Context JS",
-    "appId": "kevincastejon.reg.context.js",
+    "productName": "Right-Click It",
+    "appId": "kevincastejon.right.click.it",
     "files": [
       "output/**/*",
       "node_modules/**/*",
@@ -67,6 +67,10 @@
   "dependencies": {
     "@material-ui/core": "^4.9.13",
     "@material-ui/icons": "^4.9.1",
+    "@material-ui/lab": "^4.0.0-alpha.53",
+    "clsx": "^1.1.0",
+    "github-fetch-file": "^1.0.1",
+    "prop-types": "^15.7.2",
     "regedit": "^3.0.3"
   }
 }
