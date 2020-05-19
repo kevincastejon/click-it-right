@@ -1,15 +1,14 @@
 import { ipcRenderer } from 'electron';
 import React, { useState, useEffect } from 'react';
+import PropTypes from 'prop-types';
 import { makeStyles } from '@material-ui/core/styles';
 import {
-  CircularProgress, Button, Modal, Backdrop,
+  CircularProgress, Button, Modal, Backdrop, Typography, Dialog, DialogActions, DialogTitle,
 } from '@material-ui/core';
 import AddCircleIcon from '@material-ui/icons/AddCircle';
-import Dialog from '@material-ui/core/Dialog';
-import DialogActions from '@material-ui/core/DialogActions';
-import DialogTitle from '@material-ui/core/DialogTitle';
 import ShortCutForm from './ShortCutForm';
 import ShortCut from './ShortCut';
+import SearchBar from './SearchBar';
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -26,13 +25,21 @@ const useStyles = makeStyles((theme) => ({
   },
 }));
 
-export default function MyShortcuts() {
+export default function MyShortcuts(props) {
+  const {
+    onError, onNotif,
+  } = props;
   const [keys, setKeys] = useState(null);
+  const [search, setSearch] = useState('');
+  const [filters, setFilters] = useState([]);
   const [addingModal, setAddingModal] = useState(false);
   const [editingModal, setEditingModal] = useState(-1);
   const [deletingModal, setDeletingModal] = useState(-1);
   const [frozen, setFrozen] = useState(false);
   const [loading, setLoading] = useState(false);
+  ipcRenderer.on('onError', (e, err) => {
+    onError(err);
+  });
   const getData = () => {
     setLoading(true);
     setKeys(null);
@@ -46,6 +53,7 @@ export default function MyShortcuts() {
     setFrozen(true);
     setAddingModal(false);
     ipcRenderer.once('keyAdded', () => {
+      onNotif('Shortcut created!');
       setFrozen(false);
       getData();
     });
@@ -55,6 +63,7 @@ export default function MyShortcuts() {
     setFrozen(true);
     setEditingModal(-1);
     ipcRenderer.once('keyEdited', () => {
+      onNotif('Shortcut edited!');
       setFrozen(false);
       getData();
     });
@@ -64,6 +73,7 @@ export default function MyShortcuts() {
     setFrozen(true);
     setDeletingModal(-1);
     ipcRenderer.once('keyDeleted', () => {
+      onNotif('Shortcut deleted!');
       setFrozen(false);
       getData();
     });
@@ -75,10 +85,9 @@ export default function MyShortcuts() {
       ipcRenderer.removeAllListeners();
     });
   }, []);
+  const filteredKeys = !keys ? null : (filters.length === 0 ? keys.concat() : keys.filter((k) => filters.find((ft) => k[`${ft}Env`])))
+    .filter((k) => k.name.toLowerCase().includes(search.toLowerCase()));
   const classes = useStyles();
-  // if (keys) {
-  // console.log(JSON.stringify(keys));
-  // }
   return (
     <div className={classes.root}>
       <Backdrop className={classes.backdrop} open={frozen}>
@@ -126,7 +135,6 @@ export default function MyShortcuts() {
                   />
                 )}
             </div>
-
           </Modal>
           <Dialog
             open={deletingModal > -1}
@@ -146,6 +154,7 @@ export default function MyShortcuts() {
       )}
       <div style={{ textAlign: 'right' }}>
         <Button
+          style={{ marginBottom: 15 }}
           disabled={loading}
           color="primary"
           startIcon={<AddCircleIcon />}
@@ -156,13 +165,23 @@ export default function MyShortcuts() {
           New shortcut
         </Button>
       </div>
-      {!keys ? (
-        <h3>
+      <SearchBar
+        search={search}
+        onSearchChange={(value) => {
+          setSearch(value);
+        }}
+        filters={filters}
+        onFiltersChange={(newFilters) => {
+          setFilters(newFilters);
+        }}
+      />
+      {!filteredKeys ? (
+        <Typography variant="h6" style={{ marginTop: 15 }}>
           <CircularProgress />
           {' '}
           Reading registry...
-        </h3>
-      ) : !keys.length ? <h4>No shortcut</h4> : keys.map((k, i) => (
+        </Typography>
+      ) : !filteredKeys.length ? <h4>No shortcut</h4> : filteredKeys.map((k, i) => (
         <ShortCut
           key={k.name}
           icon={k.icon}
@@ -185,3 +204,7 @@ export default function MyShortcuts() {
     </div>
   );
 }
+MyShortcuts.propTypes = {
+  onError: PropTypes.func.isRequired,
+  onNotif: PropTypes.func.isRequired,
+};

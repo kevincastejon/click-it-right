@@ -1,6 +1,14 @@
 // Import parts of electron to use
 const path = require('path');
 const fs = require('fs').promises;
+const superagent = require('superagent');
+
+const options = {
+  client_id: '5e7f0fb49300fe721034',
+  client_secret: 'bc06c610e243021b3773c8a92191c65585990a49',
+  scopes: ['public_repo'], // Scopes limit access for OAuth tokens.
+};
+
 const regedit = require('regedit');
 const {
   ipcMain, app, BrowserWindow, Menu,
@@ -89,7 +97,7 @@ function createWindow() {
   // Create the browser window.
   mainWindow = new BrowserWindow({
     width: 1024,
-    minWidth: 700,
+    minWidth: 900,
     height: 768,
     minHeight: 600,
     show: false,
@@ -256,7 +264,65 @@ function createWindow() {
       e.sender.send('onError', err.message);
     }
   });
+  let requesting = false;
+  ipcMain.on('getToken', async (e) => {
+    let authWindow;
+    function handleCallback(url2) {
+      const code = url2.split('?')[1].split('=')[1];
+      console.log('Auth code');
+      console.log(code);
+      authWindow.destroy();
+      (async () => {
+        try {
+          const tokenRes = await superagent
+            .post('https://github.com/login/oauth/access_token')
+            .set('Accept', 'application/json')
+            .send({
+              client_id: options.client_id, client_secret: options.client_secret, code, redirect_uri: 'http://localhost', state: 'tabouret123',
+            });
+          const token = tokenRes.body.access_token;
+          e.sender.send('onToken', token);
+        } catch (err) {
+          console.error(err);
+        }
+      })();
+      requesting = false;
+    }
+    if (!requesting) {
+      requesting = true;
+      // Build the OAuth consent page URL
+      authWindow = new BrowserWindow({
+        width: 800,
+        height: 600,
+        show: false,
+        'node-integration': false,
+      });
+      const githubUrl = 'https://github.com/login/oauth/authorize?';
+      const authUrl = `${githubUrl}client_id=${options.client_id}&scope=${options.scopes}`;
+      authWindow.loadURL(authUrl);
+      authWindow.show();
 
+      // Handle the response from GitHub - See Update from 4/12/2015
+
+      authWindow.webContents.on('will-navigate', (event, url2) => {
+        console.log('WILL NAVIGATE');
+        handleCallback(url2);
+      });
+      authWindow.webContents.on('will-redirect', (ev, url2) => {
+        console.log('REDIRECT REQUEST');
+        handleCallback(url2);
+      });
+
+      // Reset the authWindow on close
+      authWindow.on(
+        'close',
+        () => {
+          authWindow = null;
+        },
+        false,
+      );
+    }
+  });
   ipcMain.on('getKeys', async (e) => {
     try {
       await ensureDir();
@@ -298,13 +364,13 @@ function createWindow() {
         command: (await listReg([`${types.desk}\\${subkey}\\command`]))[`${types.desk}\\${subkey}\\command`].values[''].value,
       })));
       const deepkeys = [dirKeys, dirBkgKeys, fileKeys, deskKeys];
-      const keys = await Promise.resolve(deepkeys.reduce(async (acc, current, i) => {
+      const reducedkeys = deepkeys.reduce((acc, current, i) => {
         for (let j = 0; j < current.length; j += 1) {
           const k = current[j];
           const foundId = acc.findIndex((elt) => elt.name === k.name);
           if (foundId === -1) {
             const obj = {
-              icon: k.icon.length > 0 ? `${'data:image/x-icon;base64,'}${(await fs.readFile(k.icon)).toString('base64')}` : null,
+              icon: k.icon,
               name: k.name,
               label: k.label,
               description: k.description,
@@ -321,7 +387,8 @@ function createWindow() {
           }
         }
         return acc;
-      }, []));
+      }, []);
+      const keys = await Promise.all(reducedkeys.map(async (k) => ({ ...k, icon: k.icon.length > 0 ? `${'data:image/x-icon;base64,'}${(await fs.readFile(k.icon)).toString('base64')}` : null })));
       keys.sort((a, b) => a.name.localeCompare(b.name));
       e.sender.send('onKeys', keys);
     } catch (err) {

@@ -1,16 +1,21 @@
 import { ipcRenderer } from 'electron';
 import React, { useState, useEffect } from 'react';
-import fetch from 'github-fetch-file';
+import PropTypes from 'prop-types';
 import { makeStyles } from '@material-ui/core/styles';
 import {
-  CircularProgress, Button, Modal, Backdrop,
+  CircularProgress, Button, Backdrop, Typography, Tooltip,
 } from '@material-ui/core';
-import AddCircleIcon from '@material-ui/icons/AddCircle';
+import CloudUploadIcon from '@material-ui/icons/CloudUpload';
+import ArrowRightIcon from '@material-ui/icons/ArrowRight';
 import Dialog from '@material-ui/core/Dialog';
 import DialogActions from '@material-ui/core/DialogActions';
 import DialogTitle from '@material-ui/core/DialogTitle';
-import ShortCutForm from './ShortCutForm';
+import superagent from 'superagent';
+import SearchBar from './SearchBar';
+// import ShortCutForm from './ShortCutForm';
 import ShortCut from './ShortCut';
+
+// const { Octokit } = require('@octokit/rest');
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -27,27 +32,52 @@ const useStyles = makeStyles((theme) => ({
   },
 }));
 
-export default function CommunityShortcuts() {
+const getGitContent = async (path, params = {}) => {
+  const url = `https://api.github.com/repos/kevincastejon/community-shortcuts/contents/${path}`;
+  return await superagent
+    .get(url)
+    .auth('5e7f0fb49300fe721034', 'bc06c610e243021b3773c8a92191c65585990a49')
+    .set('Accept', 'application/json')
+    .set(params)
+    .send();
+};
+
+export default function CommunityShortcuts(props) {
+  const {
+    authenticated, onError, onNotif,
+  } = props;
   const [keys, setKeys] = useState(null);
-  const [addingModal, setAddingModal] = useState(false);
-  const [editingModal, setEditingModal] = useState(-1);
-  const [deletingModal, setDeletingModal] = useState(-1);
+  const [ownKeys, setOwnKeys] = useState(null);
+  const [search, setSearch] = useState('');
+  const [filters, setFilters] = useState([]);
+  const [installingModal, setInstallingModal] = useState(-1);
   const [frozen, setFrozen] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const getData = () => {
-    setLoading(true);
+  // const [loading, setLoading] = useState(false);
+  ipcRenderer.on('onError', (e, err) => {
+    onError(err);
+  });
+  const getData = async () => {
+    // setLoading(true);
     setKeys(null);
-    fetch('shortcuts.json', ['kevincastejon/community-shortcuts'], (err, cs) => {
-      const ks = JSON.parse(cs.data['kevincastejon/community-shortcuts']);
-      setKeys(ks);
-      setLoading(false);
+    let shortcuts;
+    try {
+      const files = (await getGitContent('shortcuts/')).body;
+      shortcuts = await Promise.all(files.map(async (f) => JSON.parse(Buffer.from((await getGitContent(`shortcuts/${f.name}`)).body.content, 'base64'))));
+      ipcRenderer.send('getKeys');
+    } catch (e) {
+      onError(e);
+    }
+    ipcRenderer.once('onKeys', (e, ks) => {
+      setOwnKeys(ks);
+      setKeys(shortcuts);
+      // setLoading(false);
     });
-    ipcRenderer.send('getKeys');
   };
   const addData = (key) => {
     setFrozen(true);
-    setAddingModal(false);
+    setInstallingModal(-1);
     ipcRenderer.once('keyAdded', () => {
+      onNotif('Shortcut installed!');
       setFrozen(false);
       getData();
     });
@@ -55,21 +85,13 @@ export default function CommunityShortcuts() {
   };
   const editData = (oldkey, key) => {
     setFrozen(true);
-    setEditingModal(-1);
+    setInstallingModal(-1);
     ipcRenderer.once('keyEdited', () => {
+      onNotif('Shortcut replaced!');
       setFrozen(false);
       getData();
     });
     ipcRenderer.send('editKey', oldkey, key);
-  };
-  const delData = (key) => {
-    setFrozen(true);
-    setDeletingModal(-1);
-    ipcRenderer.once('keyDeleted', () => {
-      setFrozen(false);
-      getData();
-    });
-    ipcRenderer.send('deleteKey', key);
   };
   useEffect(() => {
     getData();
@@ -77,65 +99,52 @@ export default function CommunityShortcuts() {
       ipcRenderer.removeAllListeners();
     });
   }, []);
+  const filteredKeys = !keys ? null : (filters.length === 0 ? keys.concat() : keys.filter((k) => filters.find((ft) => k[`${ft}Env`])))
+    .filter((k) => k.name.toLowerCase().includes(search.toLowerCase()));
   const classes = useStyles();
   return (
     <div className={classes.root}>
       <Backdrop className={classes.backdrop} open={frozen}>
         <CircularProgress color="inherit" style={{ marginRight: 10 }} />
         {' '}
-        Writing registry...
+        Installing shortcut...
       </Backdrop>
       {!keys ? null : (
         <div>
-          <Modal
-            open={addingModal || editingModal > -1}
-            className={classes.modal}
-            onClose={() => {
-              if (addingModal) {
-                setAddingModal(false);
-              } else {
-                setEditingModal(-1);
-              }
-            }}
-          >
-            <div>
-              {addingModal ? (
-                <ShortCutForm
-                  type="add"
-                  onCancel={() => setAddingModal(false)}
-                  onSubmit={(k) => addData(k)}
-                  existingNames={keys.map((k) => k.name)}
-                />
-              )
-                : (
-                  <ShortCutForm
-                    type="edit"
-                    name={editingModal > -1 ? keys[editingModal].name : null}
-                    label={editingModal > -1 ? keys[editingModal].label : null}
-                    command={editingModal > -1 ? keys[editingModal].command : null}
-                    description={editingModal > -1 ? keys[editingModal].description : null}
-                    dirEnv={editingModal > -1 ? keys[editingModal].dirEnv : null}
-                    dirBkgEnv={editingModal > -1 ? keys[editingModal].dirBkgEnv : null}
-                    fileEnv={editingModal > -1 ? keys[editingModal].fileEnv : null}
-                    deskEnv={editingModal > -1 ? keys[editingModal].deskEnv : null}
-                    onCancel={() => setEditingModal(-1)}
-                    onSubmit={(k) => editData(keys[editingModal], k)}
-                    existingNames={keys.map((k) => k.name)}
-                  />
-                )}
-            </div>
-
-          </Modal>
           <Dialog
-            open={deletingModal > -1}
-            onClose={() => setDeletingModal(false)}
+            open={installingModal > -1}
+            onClose={() => setInstallingModal(-1)}
           >
-            <DialogTitle>Really delete this shortcut?</DialogTitle>
+            <DialogTitle>
+              Really
+              {' '}
+              {installingModal > -1 && ownKeys.map((k) => k.name).includes(keys[installingModal].name) ? 'replace' : 'install'}
+              {' '}
+              this shortcut?
+              <p>
+                <ArrowRightIcon style={{ verticalAlign: 'middle' }} />
+                {installingModal > -1 ? keys[installingModal].name : null}
+              </p>
+            </DialogTitle>
             <DialogActions>
-              <Button onClick={() => delData(keys[deletingModal])} color="secondary">
-                Delete
+              <Button
+                onClick={() => {
+                  if (ownKeys.map((k) => k.name).includes(keys[installingModal].name)) {
+                    editData(ownKeys.find((k) => k.name === keys[installingModal].name), keys[installingModal]);
+                  } else {
+                    addData(keys[installingModal]);
+                  }
+                }}
+                color="primary"
+              >
+                OK
               </Button>
-              <Button onClick={() => setDeletingModal(-1)} color="primary">
+              <Button
+                onClick={() => {
+                  setInstallingModal(-1);
+                }}
+                color="secondary"
+              >
                 Cancel
               </Button>
             </DialogActions>
@@ -143,26 +152,44 @@ export default function CommunityShortcuts() {
         </div>
       )}
       <div style={{ textAlign: 'right' }}>
-        <Button
-          disabled={loading}
-          color="primary"
-          startIcon={<AddCircleIcon />}
-          onClick={() => {
-            setAddingModal(true);
-          }}
-        >
-          New shortcut
-        </Button>
+        <Tooltip title="You have to sign in to publish">
+          <span>
+            <Button
+              style={{ marginBottom: 15 }}
+              disabled={!authenticated}
+              color="primary"
+              startIcon={<CloudUploadIcon />}
+              onClick={() => {
+              // setAddingModal(true);
+              }}
+            >
+              Publish a shortcut
+            </Button>
+          </span>
+        </Tooltip>
       </div>
+      <SearchBar
+        search={search}
+        onSearchChange={(value) => {
+          setSearch(value);
+        }}
+        filters={filters}
+        onFiltersChange={(newFilters) => {
+          setFilters(newFilters);
+        }}
+      />
       {!keys ? (
-        <h3>
+        <Typography variant="h6" style={{ marginTop: 15 }}>
           <CircularProgress />
           {' '}
-          Reading registry...
-        </h3>
-      ) : !keys.length ? <h4>No shortcut</h4> : keys.map((k, i) => (
+          Reading community shortcuts...
+        </Typography>
+      ) : !filteredKeys.length ? <h4>No shortcut</h4> : filteredKeys.map((k, i) => (
         <ShortCut
+          owned={ownKeys.map((key) => key.name).includes(k.name)}
+          type="commu"
           key={k.name}
+          icon={k.icon}
           name={k.name}
           label={k.label}
           description={k.description}
@@ -171,14 +198,19 @@ export default function CommunityShortcuts() {
           dirBkgEnv={k.dirBkgEnv}
           fileEnv={k.fileEnv}
           deskEnv={k.deskEnv}
-          onEdit={() => {
-            setEditingModal(i);
+          onReplace={() => {
+            setInstallingModal(i);
           }}
-          onDelete={() => {
-            setDeletingModal(i);
+          onInstall={() => {
+            setInstallingModal(i);
           }}
         />
       ))}
     </div>
   );
 }
+CommunityShortcuts.propTypes = {
+  authenticated: PropTypes.bool.isRequired,
+  onError: PropTypes.func.isRequired,
+  onNotif: PropTypes.func.isRequired,
+};

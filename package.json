@@ -1,7 +1,7 @@
 {
   "name": "right-click-it",
   "version": "1.0.0",
-  "description": "Destop windows app to easily create context menu shotcuts",
+  "description": "Destop windows app to easily create context menu shortcuts",
   "author": "kevincastejon",
   "homepage": "https://github.com/kevincastejon/right-click-it",
   "repository": {
@@ -68,9 +68,10 @@
     "@material-ui/core": "^4.9.13",
     "@material-ui/icons": "^4.9.1",
     "@material-ui/lab": "^4.0.0-alpha.53",
+    "@octokit/rest": "^17.9.1",
     "clsx": "^1.1.0",
-    "github-fetch-file": "^1.0.1",
     "prop-types": "^15.7.2",
-    "regedit": "^3.0.3"
+    "regedit": "^3.0.3",
+    "superagent": "^5.2.2"
   }
 }
