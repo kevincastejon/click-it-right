@@ -4,14 +4,14 @@ const fs = require('fs').promises;
 const superagent = require('superagent');
 
 const options = {
-  client_id: '5e7f0fb49300fe721034',
-  client_secret: 'bc06c610e243021b3773c8a92191c65585990a49',
+  client_id: 'd7d18bb70f2cf302fe85',
+  client_secret: 'd3158d51f0b1d0631854faef2948d7e8b81a4d08',
   scopes: ['public_repo'], // Scopes limit access for OAuth tokens.
 };
 
 const regedit = require('regedit');
 const {
-  ipcMain, app, BrowserWindow, Menu,
+  ipcMain, app, BrowserWindow, Menu, shell,
 } = require('electron');
 
 const vbsDirectory = path.join(path.dirname(app.getPath('exe')), './resources/wsf');
@@ -72,14 +72,27 @@ const template = [
     label: 'File',
     submenu: [
       {
-        label: 'Open',
-        click: () => mainWindow.webContents.send('open'),
+        role: 'Quit',
+      },
+    ],
+  },
+  {
+    label: 'Help',
+    submenu: [
+      {
+        label: 'Community',
+        click: () => shell.openExternal('https://github.com/click-it-right-community/community-shortcuts'),
+      },
+      {
+        label: 'Author',
+        click: () => shell.openExternal('https://github.com/kevincastejon'),
       },
       {
         type: 'separator',
       },
       {
-        role: 'Quit',
+        label: 'About',
+        click: () => shell.openExternal('https://github.com/kevincastejon/click-it-right'),
       },
     ],
   },
@@ -98,8 +111,8 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1024,
     minWidth: 900,
-    height: 768,
-    minHeight: 600,
+    height: 800,
+    minHeight: 800,
     show: false,
     title: 'Click-it right!',
     webPreferences: {
@@ -233,6 +246,7 @@ function createWindow() {
     }
   }
   ipcMain.on('deleteKey', async (e, key) => {
+    // console.log('keys deleting requested');
     try {
       await deleteAllKeys(key);
       e.sender.send('keyDeleted');
@@ -240,7 +254,8 @@ function createWindow() {
       e.sender.send('onError', err.message);
     }
   });
-  ipcMain.on('editKey', async (e, oldkey, key) => {
+  ipcMain.on('editKey', async (e, key, oldkey) => {
+    // console.log('keys editing requested');
     try {
       await ensureDir();
       await deleteAllKeys(oldkey);
@@ -256,6 +271,7 @@ function createWindow() {
   });
 
   ipcMain.on('addKey', async (e, key) => {
+    // console.log('keys adding requested');
     try {
       await ensureDir();
       await addAllKeys(key);
@@ -266,11 +282,13 @@ function createWindow() {
   });
   let requesting = false;
   ipcMain.on('getToken', async (e) => {
+    // console.log('token requested');
     let authWindow;
     function handleCallback(url2) {
+      // console.log(url2);
       const code = url2.split('?')[1].split('=')[1];
-      console.log('Auth code');
-      console.log(code);
+      // console.log('Auth code');
+      // console.log(code);
       authWindow.destroy();
       (async () => {
         try {
@@ -281,9 +299,10 @@ function createWindow() {
               client_id: options.client_id, client_secret: options.client_secret, code, redirect_uri: 'http://localhost', state: 'tabouret123',
             });
           const token = tokenRes.body.access_token;
+          // console.log(tokenRes.body);
           e.sender.send('onToken', token);
         } catch (err) {
-          console.error(err);
+          // console.error(err);
         }
       })();
       requesting = false;
@@ -305,12 +324,14 @@ function createWindow() {
       // Handle the response from GitHub - See Update from 4/12/2015
 
       authWindow.webContents.on('will-navigate', (event, url2) => {
-        console.log('WILL NAVIGATE');
+        // console.log('WILL NAVIGATE');
         handleCallback(url2);
       });
       authWindow.webContents.on('will-redirect', (ev, url2) => {
-        console.log('REDIRECT REQUEST');
-        handleCallback(url2);
+        // console.log('REDIRECT REQUEST');
+        if (url2.includes('code')) {
+          handleCallback(url2);
+        }
       });
 
       // Reset the authWindow on close
@@ -318,12 +339,14 @@ function createWindow() {
         'close',
         () => {
           authWindow = null;
+          requesting = false;
         },
         false,
       );
     }
   });
   ipcMain.on('getKeys', async (e) => {
+    // console.log('keys requested');
     try {
       await ensureDir();
       const rawkeys = {};
@@ -389,6 +412,7 @@ function createWindow() {
         return acc;
       }, []);
       const keys = await Promise.all(reducedkeys.map(async (k) => ({ ...k, icon: k.icon.length > 0 ? `${'data:image/x-icon;base64,'}${(await fs.readFile(k.icon)).toString('base64')}` : null })));
+
       keys.sort((a, b) => a.name.localeCompare(b.name));
       e.sender.send('onKeys', keys);
     } catch (err) {

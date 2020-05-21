@@ -19,7 +19,7 @@ export default function SearchBar(props) {
       <TextField
         value={search}
         onChange={(e) => {
-          onSearchChange(e.target.value);
+          onSearchChange(e.target.value.replace(/ /g, ''));
         }}
         style={{ marginTop: 10 }}
         id="standard-search"

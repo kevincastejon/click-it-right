@@ -1,17 +1,17 @@
 {
-  "name": "right-click-it",
+  "name": "click-it-right",
   "version": "1.0.0",
   "description": "Destop windows app to easily create context menu shortcuts",
-  "author": "kevincastejon",
-  "homepage": "https://github.com/kevincastejon/right-click-it",
+  "author": "Kevin Castejon <contact@kevincastejon.fr>",
+  "homepage": "https://github.com/kevincastejon/click-it-right",
   "repository": {
     "type": "git",
-    "url": "https://github.com/kevincastejon/right-click-it.git"
+    "url": "git+https://github.com/kevincastejon/click-it-right.git"
   },
   "license": "MIT",
   "main": "main.js",
   "build": {
-    "productName": "Right-Click It",
+    "productName": "Click-It Right",
     "appId": "kevincastejon.right.click.it",
     "files": [
       "output/**/*",
@@ -69,9 +69,21 @@
     "@material-ui/icons": "^4.9.1",
     "@material-ui/lab": "^4.0.0-alpha.53",
     "@octokit/rest": "^17.9.1",
+    "babel-plugin-transform-object-rest-spread": "^6.26.0",
     "clsx": "^1.1.0",
     "prop-types": "^15.7.2",
     "regedit": "^3.0.3",
     "superagent": "^5.2.2"
-  }
+  },
+  "bugs": {
+    "url": "https://github.com/kevincastejon/click-it-right/issues"
+  },
+  "keywords": [
+    "right-click",
+    "registry",
+    "shortcut",
+    "context",
+    "menu",
+    "windows"
+  ]
 }

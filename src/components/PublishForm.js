@@ -1,15 +1,18 @@
 import '../assets/css/App.css';
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
+import { shell } from 'electron';
 import PropTypes from 'prop-types';
 import { makeStyles } from '@material-ui/core/styles';
 import {
-  Button, TextField, Typography, Tooltip, Switch, FormGroup, FormControlLabel,
+  Typography, Stepper, StepLabel, Step, Button, ListItemAvatar, ListItemText, ListItem, List, Avatar, Tooltip, Grid, Link, Card,
 } from '@material-ui/core';
 import FolderIcon from '@material-ui/icons/Folder';
 import PermMediaIcon from '@material-ui/icons/PermMedia';
 import FileCopyIcon from '@material-ui/icons/FileCopy';
 import DesktopWindowsIcon from '@material-ui/icons/DesktopWindows';
-import HelpIcon from '@material-ui/icons/Help';
+import GitHubIcon from '@material-ui/icons/GitHub';
+import noicon from '../assets/img/noicon.png';
+import StepLoader from './StepLoader';
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -22,297 +25,321 @@ const useStyles = makeStyles((theme) => ({
     boxShadow: theme.shadows[5],
     padding: theme.spacing(2, 4, 3),
   },
-  fieldsCont: {
-    textAlign: 'left',
-    marginBottom: 20,
-    marginTop: 20,
+  list: {
+    margin: 25,
+
+    overflow: 'auto',
+    maxHeight: 300,
+
   },
-  toolTip: {
-    verticalAlign: 'bottom',
-    color: 'grey',
+  item: {
+    backgroundColor: '#fafdff',
   },
-  iconHolder: {
-    width: 64,
-    height: 64,
-    border: '1px solid black',
+  inline: {
+    display: 'inline',
   },
 }));
 
 
-export default function ShortCutForm(props) {
+export default function PublishForm(props) {
   const {
-    type, icon, name, label, command, description, existingNames, onCancel, onSubmit, dirEnv, dirBkgEnv, fileEnv, deskEnv,
+    onCancel, onSubmit, shortcuts, currentGitStep, gitSteps,
   } = props;
-  const [picon, setPicon] = useState(icon);
-  const [pname, setPname] = useState(name);
-  const [plabel, setPlabel] = useState(label);
-  const [pcommand, setPcommand] = useState(command);
-  const [pdescription, setPdescription] = useState(description);
-  const [pdirEnv, setPdirEnv] = useState(dirEnv);
-  const [pdirBkgEnv, setPdirBkgEnv] = useState(dirBkgEnv);
-  const [pfileEnv, setPfileEnv] = useState(fileEnv);
-  const [pdeskEnv, setPdeskEnv] = useState(deskEnv);
-  const inputEl = useRef(null);
+  const [publishingId, setPublishingId] = useState(-1);
+  const [currentStep, setCurrentStep] = useState(0);
   const classes = useStyles();
-  const nameError = pname.length && ((existingNames.includes(pname) && pname !== name)) ? 'This name is already used by another shortcut!' : null;
+
+  let prevBtnDisabled = false;
+  if (currentStep >= 3 || currentStep === 0) {
+    prevBtnDisabled = true;
+  }
+  if (currentStep === 0 && publishingId > -1) {
+    prevBtnDisabled = true;
+  }
+  let nextBtnDisabled = false;
+  if (currentStep >= 3 || (currentStep === 0 && publishingId === -1)) {
+    nextBtnDisabled = true;
+  }
   return (
     <div className={classes.root}>
-      <input
-        ref={inputEl}
-        style={{
-          display: 'none',
-        }}
-        id="file-button"
-        type="file"
-        accept="image/x-icon"
-        onChange={(e) => {
-          const reader = new FileReader();
-          reader.onload = (ev) => {
-            setPicon(ev.target.result);
-          };
-          reader.readAsDataURL(e.target.files[0]);
-          e.target.value = '';
-        }}
-      />
       <div className={classes.paper}>
         <Typography variant="h4">
-          {type === 'add' ? 'New shortcut' : 'Edit shortcut'}
+          Publish shortcut
         </Typography>
-        <div className={classes.fieldsCont}>
-          <div
-            style={{ display: 'inline-block' }}
-            onClick={() => inputEl.current.click()}
-            className={classes.iconHolder}
-          >
-            {!picon ? null : <img height={64} alt="icon" src={picon} />}
-          </div>
-          <Button
-            onClick={() => inputEl.current.click()}
-            style={{ verticalAlign: 'bottom', marginLeft: 10 }}
-          >
-            Select icon (64x64)
-          </Button>
-          <div>
-            <TextField
-              onChange={(e) => setPname(e.target.value.trim().replace(/[^a-zA-Z0-9_-]/g, ''))}
-              required
-              placeholder="Enter a context menu label"
-              label="Name"
-              value={pname}
-              error={nameError !== null}
-              helperText={nameError}
-            />
-            <Tooltip className={classes.toolTip} title="Unique name for your shortcut" aria-label="name">
-              <HelpIcon fontSize="small" />
-            </Tooltip>
-          </div>
-          <div>
-            <TextField
-              label="Label"
-              style={{ marginTop: 10, width: 300 }}
-              onChange={(e) => setPlabel(e.target.value.trimStart().replace(/[^a-zA-Z0-9 ]/g, ''))}
-              required
-              placeholder="Enter a context menu label"
-              value={plabel}
-            />
-            <Tooltip className={classes.toolTip} title="Label displayed on the right-click context menu" aria-label="label">
-              <HelpIcon fontSize="small" />
-            </Tooltip>
-          </div>
-          <div>
-            <TextField
-              label="Command"
-              style={{ marginTop: 10, width: 500 }}
-              onChange={(e) => setPcommand(e.target.value.trimStart())}
-              required
-              placeholder="Enter a command"
-              value={pcommand}
-            />
-            <Tooltip className={classes.toolTip} title={'Command called when the shortcut is clicked. Each block of commands / arguments should be double-quoted. Example: "path/to/app.exe" "arg1" "arg2"...'} aria-label="label">
-              <HelpIcon fontSize="small" />
-            </Tooltip>
-          </div>
-          <div>
-            <TextField
-              label="Description"
-              style={{ marginTop: 10, width: 500 }}
-              onChange={(e) => setPdescription(e.target.value.trimStart())}
-              placeholder="Enter a description"
-              value={pdescription}
-            />
-            <Tooltip className={classes.toolTip} title="Description for your shortcut" aria-label="label">
-              <HelpIcon fontSize="small" />
-            </Tooltip>
-          </div>
-          <Typography style={{ marginTop: 20 }}>
-            Environments
-          </Typography>
-          <div>
-            <FormGroup>
-              <FormControlLabel
-                control={(
-                  <Switch
-                    checked={pdirEnv}
-                    onChange={() => {
-                      if (pdirEnv) {
-                        if (pdirBkgEnv || pfileEnv || pdeskEnv) {
-                          setPdirEnv(false);
-                        }
-                      } else {
-                        setPdirEnv(true);
-                      }
-                    }}
-                    color="primary"
-                  />
+        <Stepper activeStep={currentStep}>
+          <Step key={0} completed={currentStep > 0}>
+            <StepLabel>Select</StepLabel>
+          </Step>
+          <Step key={1} completed={currentStep > 1}>
+            <StepLabel>Review</StepLabel>
+          </Step>
+          <Step key={2} completed={currentStep > 2}>
+            <StepLabel>Submit</StepLabel>
+          </Step>
+        </Stepper>
+        <div>
+          {currentStep !== 0 ? null
+            : (
+              <div>
+                <Typography variant="h5" style={{ marginBottom: 20 }}>
+                  Select a shortcut
+                </Typography>
+                <List component="nav" className={classes.list}>
+                  {shortcuts.map((sc, i) => (
+                    <Tooltip title={sc.description.length === 0 || !sc.icon ? 'A shortcut must have a description and an icon to be published!' : ''} arrow key={sc.name}>
+                      <ListItem
+                        className={classes.item}
+                        selected={publishingId === i}
+                        button
+                        alignItems="flex-start"
+                        onClick={() => (sc.description.length === 0 || !sc.icon ? null : setPublishingId(i))}
+                      >
+                        <ListItemAvatar>
+                          <Avatar variant="rounded" alt="icon" src={sc.icon || noicon} />
+                        </ListItemAvatar>
+                        <ListItemText
+                          primary={sc.name}
+                          secondary={(
+                            <Typography color={sc.description.length === 0 || !sc.icon ? 'secondary' : 'primary'}>
+                              {sc.description.length === 0 || !sc.icon ? 'Ineligible to publish' : 'Eligible to publish'}
+                            </Typography>
+                      )}
+                        />
+                      </ListItem>
+                    </Tooltip>
+                  ))}
+                </List>
+              </div>
             )}
-                label={(
-                  <span style={{ color: !pdirEnv ? 'grey' : 'blue' }}>
-                    <FolderIcon style={{ verticalAlign: 'bottom' }} />
-                    {' '}
-                    Directory
-                    {' '}
-                    <Tooltip style={{ verticalAlign: 'bottom' }} className={classes.toolTip} title="Right-click on a directory item" aria-label="name">
-                      <HelpIcon fontSize="small" />
-                    </Tooltip>
-                  </span>
-)}
-              />
-              <FormControlLabel
-                control={(
-                  <Switch
-                    checked={pdirBkgEnv}
-                    onChange={() => {
-                      if (pdirBkgEnv) {
-                        if (pdirEnv || pfileEnv || pdeskEnv) {
-                          setPdirBkgEnv(false);
-                        }
-                      } else {
-                        setPdirBkgEnv(true);
-                      }
+          {currentStep !== 1 ? null
+            : (
+              <div>
+                <Typography variant="h5" style={{ marginBottom: 20 }}>
+                  Review your shortcut
+                </Typography>
+                <Grid
+                  style={{ width: '80%', margin: 'auto' }}
+                  container
+                  spacing={1}
+                >
+                  <Grid
+                    container
+                    item
+                    xs={12}
+                    spacing={1}
+                    direction="row"
+                    justify="flex-start"
+                    alignItems="center"
+                  >
+                    <Grid item xs={4}>
+                      <Typography variant="h6" style={{ textAlign: 'left' }}>
+                        Name:
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={8}>
+                      <Typography
+                        variant="subtitle2"
+                        style={{ textAlign: 'left' }}
+                      >
+                        {shortcuts[publishingId].name}
+                      </Typography>
+                    </Grid>
+                  </Grid>
+                  <Grid
+                    container
+                    item
+                    xs={12}
+                    spacing={1}
+                    direction="row"
+                    justify="flex-start"
+                    alignItems="center"
+                  >
+                    <Grid item xs={4}>
+                      <Typography variant="h6" style={{ textAlign: 'left' }}>
+                        Label:
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={8}>
+                      <Typography
+                        variant="subtitle2"
+                        style={{ textAlign: 'left' }}
+                      >
+                        {shortcuts[publishingId].label}
+                      </Typography>
+                    </Grid>
+                  </Grid>
+                  <Grid
+                    container
+                    item
+                    xs={12}
+                    spacing={1}
+                    direction="row"
+                    justify="flex-start"
+                    alignItems="center"
+                  >
+                    <Grid item xs={4}>
+                      <Typography variant="h6" style={{ textAlign: 'left' }}>
+                        Command:
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={8}>
+                      <Typography
+                        title={shortcuts[publishingId].command}
+                        variant="subtitle2"
+                        style={{ textAlign: 'left' }}
+                      >
+                        {`${shortcuts[publishingId].command.substring(0, 50)}...`}
+                      </Typography>
+                    </Grid>
+                  </Grid>
+                  <Grid
+                    container
+                    item
+                    xs={12}
+                    spacing={1}
+                    direction="row"
+                    justify="flex-start"
+                    alignItems="center"
+                  >
+                    <Grid item xs={4}>
+                      <Typography variant="h6" style={{ textAlign: 'left' }}>
+                        Description:
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={8}>
+                      <Typography
+                        variant="subtitle2"
+                        title={shortcuts[publishingId].description}
+                        style={{ textAlign: 'left' }}
+                      >
+                        {`${shortcuts[publishingId].description.substring(0, 50)}...`}
+                      </Typography>
+                    </Grid>
+                  </Grid>
+                  <Grid
+                    container
+                    item
+                    xs={12}
+                    spacing={1}
+                    direction="row"
+                    justify="flex-start"
+                    alignItems="center"
+                  >
+                    <Grid item xs={4}>
+                      <Typography variant="h6" style={{ textAlign: 'left' }}>
+                        Environments:
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={8}>
+                      <div style={{ textAlign: 'left' }}>
+                        {!shortcuts[publishingId].dirEnv ? null : <span style={{ marginLeft: 0 }} title="Directory"><FolderIcon style={{ verticalAlign: 'bottom' }} /></span> }
+                        {!shortcuts[publishingId].dirBkgEnv ? null : <span style={{ marginLeft: 10 }} title="Directory background"><PermMediaIcon style={{ verticalAlign: 'bottom' }} /></span>}
+                        {!shortcuts[publishingId].fileEnv ? null : <span style={{ marginLeft: 10 }} title="Files"><FileCopyIcon style={{ verticalAlign: 'bottom' }} /></span>}
+                        {!shortcuts[publishingId].deskEnv ? null : <span style={{ marginLeft: 10 }} title="Desktop"><DesktopWindowsIcon style={{ verticalAlign: 'bottom' }} /></span>}
+                      </div>
+                    </Grid>
+                  </Grid>
+                </Grid>
+
+              </div>
+            )}
+          {currentStep !== 2 ? null
+            : (
+              <div>
+                <Typography variant="h5" style={{ marginBottom: 20 }}>
+                  Submit your shorcut
+                </Typography>
+                <Typography variant="subtitle2" style={{ textAlign: 'left' }}>
+                  This will create a fork of the
+                  {' '}
+                  <Link
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      shell.openExternal('https://github.com/click-it-right-community/community-shortcuts');
                     }}
-                    color="primary"
+                  >
+                    community-shortcuts
+                  </Link>
+                  {' '}
+                  GitHub repo on your own GitHub account (if not already have).
+                  <br />
+                  Then it will create a branch containing your shortcut adding and create a pull request from it.
+                  <br />
+                  When your shortcut will be accepted (or not !) you will be able to find it on the Community Shortcut menu.
+                </Typography>
+              </div>
+            )}
+          {currentStep !== 3 ? null
+            : (
+              <div>
+                <Typography variant="h5" style={{ marginBottom: 20 }}>
+                  Operating GitHub API
+                  {' '}
+                  <GitHubIcon />
+                </Typography>
+                <Card style={{ backgroundColor: '#fafdff', width: '80%', margin: 'auto' }}>
+                  <StepLoader
+                    steps={gitSteps}
+                    currentStep={currentGitStep}
                   />
-              )}
-                label={(
-                  <span style={{ color: !pdirBkgEnv ? 'grey' : 'blue' }}>
-                    <PermMediaIcon style={{ verticalAlign: 'bottom' }} />
-                    {' '}
-                    Directory background
-                    {' '}
-                    <Tooltip style={{ verticalAlign: 'bottom' }} className={classes.toolTip} title="Right-click on a directory background" aria-label="name">
-                      <HelpIcon fontSize="small" />
-                    </Tooltip>
-                  </span>
-)}
-              />
-              <FormControlLabel
-                control={(
-                  <Switch
-                    checked={pfileEnv}
-                    onChange={() => {
-                      if (pfileEnv) {
-                        if (pdirEnv || pdirBkgEnv || pdeskEnv) {
-                          setPfileEnv(false);
-                        }
-                      } else {
-                        setPfileEnv(true);
-                      }
-                    }}
-                    color="primary"
-                  />
-              )}
-                label={(
-                  <span style={{ color: !pfileEnv ? 'grey' : 'blue' }}>
-                    <FileCopyIcon style={{ verticalAlign: 'bottom' }} />
-                    {' '}
-                    Files
-                    {' '}
-                    <Tooltip style={{ verticalAlign: 'bottom' }} className={classes.toolTip} title="Right-click on a file item" aria-label="name">
-                      <HelpIcon fontSize="small" />
-                    </Tooltip>
-                  </span>
-)}
-              />
-              <FormControlLabel
-                control={(
-                  <Switch
-                    checked={pdeskEnv}
-                    onChange={() => {
-                      if (pdeskEnv) {
-                        if (pdirEnv || pdirBkgEnv || pfileEnv) {
-                          setPdeskEnv(false);
-                        }
-                      } else {
-                        setPdeskEnv(true);
-                      }
-                    }}
-                    color="primary"
-                  />
-              )}
-                label={(
-                  <span style={{ color: !pdeskEnv ? 'grey' : 'blue' }}>
-                    <DesktopWindowsIcon style={{ verticalAlign: 'bottom' }} />
-                    {' '}
-                    Desktop
-                    {' '}
-                    <Tooltip style={{ verticalAlign: 'bottom' }} className={classes.toolTip} title="Right-click on the desktop" aria-label="name">
-                      <HelpIcon fontSize="small" />
-                    </Tooltip>
-                  </span>
-)}
-              />
-            </FormGroup>
-          </div>
+                </Card>
+              </div>
+            )}
         </div>
-        <Button
-          color="primary"
-          onClick={() => {
-            onSubmit({
-              icon: picon, name: pname, label: plabel.trimEnd(), command: pcommand.trim(), description: pdescription.trimEnd(), dirEnv: pdirEnv, dirBkgEnv: pdirBkgEnv, fileEnv: pfileEnv, deskEnv: pdeskEnv,
-            });
-          }}
-          variant="contained"
-          disabled={((existingNames.includes(pname) && pname !== name) || pname === '') || (plabel === '') || (pcommand === '')}
-        >
-          {type === 'add' ? 'Create' : 'Edit'}
-        </Button>
-        {' '}
-        <Button
-          onClick={() => {
-            onCancel();
-          }}
-          variant="contained"
-          color="secondary"
-        >
-          Cancel
-        </Button>
+        <div style={{ marginTop: 100 }}>
+          <Button
+            disabled={prevBtnDisabled}
+            onClick={() => setCurrentStep(currentStep - 1)}
+          >
+            Previous
+          </Button>
+          <Button
+            color="primary"
+            disabled={nextBtnDisabled}
+            onClick={() => {
+              if (currentStep === 2) {
+                onSubmit(shortcuts[publishingId].name);
+              }
+              setCurrentStep(currentStep + 1);
+            }}
+          >
+            {currentStep === 2 ? 'Submit' : 'Next'}
+          </Button>
+          <Button
+            disabled={currentStep === 3}
+            color="secondary"
+            onClick={() => onCancel()}
+          >
+            Cancel
+          </Button>
+        </div>
       </div>
     </div>
   );
 }
-ShortCutForm.propTypes = {
-  type: PropTypes.string.isRequired,
-  icon: PropTypes.string,
-  name: PropTypes.string,
-  label: PropTypes.string,
-  command: PropTypes.string,
-  description: PropTypes.string,
-  existingNames: PropTypes.arrayOf(PropTypes.string).isRequired,
-  dirEnv: PropTypes.bool,
-  dirBkgEnv: PropTypes.bool,
-  fileEnv: PropTypes.bool,
-  deskEnv: PropTypes.bool,
+PublishForm.propTypes = {
+  shortcuts: PropTypes.arrayOf(PropTypes.shape({
+    icon: PropTypes.string,
+    name: PropTypes.string.isRequired,
+    label: PropTypes.string.isRequired,
+    command: PropTypes.string.isRequired,
+    description: PropTypes.string.isRequired,
+    dirEnv: PropTypes.bool.isRequired,
+    dirBkgEnv: PropTypes.bool.isRequired,
+    fileEnv: PropTypes.bool.isRequired,
+    deskEnv: PropTypes.bool.isRequired,
+  })),
+  gitSteps: PropTypes.arrayOf(PropTypes.shape({
+    label: PropTypes.string,
+    labelAfter: PropTypes.string,
+    labelError: PropTypes.string,
+    color: PropTypes.oneOf(['primary', 'secondary']),
+  })).isRequired,
+  currentGitStep: PropTypes.number.isRequired,
   onCancel: PropTypes.func.isRequired,
   onSubmit: PropTypes.func.isRequired,
 };
-ShortCutForm.defaultProps = {
-  icon: null,
-  name: '',
-  label: '',
-  command: '',
-  description: '',
-  dirEnv: true,
-  dirBkgEnv: false,
-  fileEnv: false,
-  deskEnv: false,
+PublishForm.defaultProps = {
+  shortcuts: null,
 };
