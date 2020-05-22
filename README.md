@@ -9,7 +9,7 @@
 ## Install
 Simply use the installer hosted on GitHub last release.
 
-[Click-It Right Setup.exe](https://github.com/kevincastejon/clicki-it-right/releases/latest/download/Click-It%20Right%20Setup.exe)
+[Click-It Right Setup.exe](https://github.com/kevincastejon/click-it-right/releases/latest/download/Click-It.Right.Setup.1.0.0.exe)
 
 ## Usage
 
