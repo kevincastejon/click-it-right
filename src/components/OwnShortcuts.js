@@ -16,7 +16,7 @@ const useStyles = makeStyles(() => ({
 
 export default function OwnShortcuts(props) {
   const {
-    shortcuts, loading, onCreate, onEdit, onDelete,
+    authenticated, shortcuts, loading, onCreate, onEdit, onDelete, onPublish,
   } = props;
   const [search, setSearch] = useState('');
   const [filters, setFilters] = useState([]);
@@ -57,6 +57,7 @@ export default function OwnShortcuts(props) {
         </Typography>
       ) : !filteredKeys.length ? <h4>No shortcut</h4> : filteredKeys.map((k) => (
         <ShortCut
+          authenticated={authenticated}
           key={k.name}
           icon={k.icon}
           name={k.name}
@@ -67,18 +68,16 @@ export default function OwnShortcuts(props) {
           dirBkgEnv={k.dirBkgEnv}
           fileEnv={k.fileEnv}
           deskEnv={k.deskEnv}
-          onEdit={() => {
-            onEdit(k.name);
-          }}
-          onDelete={() => {
-            onDelete(k.name);
-          }}
+          onEdit={() => onEdit(k.name)}
+          onDelete={() => onDelete(k.name)}
+          onPublish={() => onPublish(k.name)}
         />
       ))}
     </div>
   );
 }
 OwnShortcuts.propTypes = {
+  authenticated: PropTypes.bool.isRequired,
   shortcuts: PropTypes.arrayOf(PropTypes.shape({
     icon: PropTypes.string,
     name: PropTypes.string.isRequired,
@@ -94,6 +93,7 @@ OwnShortcuts.propTypes = {
   onCreate: PropTypes.func.isRequired,
   onEdit: PropTypes.func.isRequired,
   onDelete: PropTypes.func.isRequired,
+  onPublish: PropTypes.func.isRequired,
 };
 OwnShortcuts.defaultProps = {
   shortcuts: null,

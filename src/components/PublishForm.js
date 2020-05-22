@@ -43,9 +43,9 @@ const useStyles = makeStyles((theme) => ({
 
 export default function PublishForm(props) {
   const {
-    onCancel, onSubmit, shortcuts, currentGitStep, gitSteps,
+    preSelection, onCancel, onSubmit, shortcuts, currentGitStep, gitSteps,
   } = props;
-  const [publishingId, setPublishingId] = useState(-1);
+  const [publishingId, setPublishingId] = useState(preSelection);
   const [currentStep, setCurrentStep] = useState(0);
   const classes = useStyles();
 
@@ -319,6 +319,7 @@ export default function PublishForm(props) {
   );
 }
 PublishForm.propTypes = {
+  preSelection: PropTypes.number,
   shortcuts: PropTypes.arrayOf(PropTypes.shape({
     icon: PropTypes.string,
     name: PropTypes.string.isRequired,
@@ -341,5 +342,6 @@ PublishForm.propTypes = {
   onSubmit: PropTypes.func.isRequired,
 };
 PublishForm.defaultProps = {
+  preSelection: -1,
   shortcuts: null,
 };

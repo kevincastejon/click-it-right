@@ -52,10 +52,10 @@ export default function App() {
   const [editingId, setEditingId] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
   const [installingId, setInstallingId] = useState(null);
+  const [publishing, setPublishing] = useState(null);
   const [frozen, setFrozen] = useState(false);
   const [loadingOwn, setLoadingOwn] = useState(false);
   const [loadingCommu, setLoadingCommu] = useState(false);
-  const [publishing, setPublishing] = useState(false);
   const [currentGitStep, setCurrentGitStep] = useState(-1);
   const [avatarUrl, setAvatarUrl] = useState(null);
   const classes = useStyles();
@@ -242,7 +242,7 @@ export default function App() {
     }
     setCurrentGitStep(8);
     setNotification({ type: 'success', message: 'Shortcut submitted!' });
-    setPublishing(false);
+    setPublishing(null);
     getOwnShortcuts();
     getCommuShortcuts();
     setCurrentGitStep(-1);
@@ -285,7 +285,7 @@ export default function App() {
         onSignIn={() => authenticate()}
         onLogOut={() => deleteToken()}
         onPageChange={(val) => changePage(val)}
-        onPublish={() => setPublishing(true)}
+        onPublish={() => setPublishing('')}
       />
       <div>
         <ShortCutModal
@@ -305,8 +305,9 @@ export default function App() {
           }}
         />
         <PublishModal
+          preSelection={publishing ? ownShortcuts.findIndex((s) => s.name === publishing) : -1}
           shortcuts={ownShortcuts}
-          open={publishing}
+          open={publishing !== null}
           gitSteps={gitSteps}
           currentGitStep={currentGitStep}
           onSubmit={(name) => {
@@ -314,7 +315,7 @@ export default function App() {
           }}
           onCancel={() => {
             if (currentGitStep === -1) {
-              setPublishing(false);
+              setPublishing(null);
             }
           }}
         />
@@ -348,11 +349,13 @@ export default function App() {
       <div className={classes.bodyCont}>
         {page === 'own' ? (
           <OwnShortcuts
+            authenticated={authenticated}
             loading={loadingOwn}
             shortcuts={ownShortcuts}
             onCreate={() => setAdding(true)}
             onEdit={(name) => setEditingId(name)}
             onDelete={(name) => setDeletingId(name)}
+            onPublish={(name) => setPublishing(name)}
           />
         ) : (
           <CommunityShortcuts
@@ -367,7 +370,7 @@ export default function App() {
               setInstallingId(name);
             }}
             onPublish={() => {
-              setPublishing(true);
+              setPublishing('');
             }}
           />
         )}

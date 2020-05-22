@@ -3,11 +3,12 @@ import { shell } from 'electron';
 import PropTypes from 'prop-types';
 import { makeStyles } from '@material-ui/core/styles';
 import {
-  IconButton, Typography, ExpansionPanelActions, Divider, ExpansionPanel, ExpansionPanelSummary, ExpansionPanelDetails, ClickAwayListener,
+  IconButton, Typography, ExpansionPanelActions, Divider, ExpansionPanel, ExpansionPanelSummary, ExpansionPanelDetails, ClickAwayListener, Tooltip,
 } from '@material-ui/core';
 import EditIcon from '@material-ui/icons/Edit';
 import DeleteIcon from '@material-ui/icons/Delete';
 import GitHubIcon from '@material-ui/icons/GitHub';
+import CloudUploadIcon from '@material-ui/icons/CloudUpload';
 import FolderIcon from '@material-ui/icons/Folder';
 import PermMediaIcon from '@material-ui/icons/PermMedia';
 import FileCopyIcon from '@material-ui/icons/FileCopy';
@@ -30,7 +31,7 @@ const useStyles = makeStyles(() => ({
 
 export default function ShortCut(props) {
   const {
-    type, icon, name, label, description, command, dirEnv, dirBkgEnv, fileEnv, deskEnv, onEdit, onDelete, onInstall, onReplace, owned,
+    type, icon, name, label, description, command, dirEnv, dirBkgEnv, fileEnv, deskEnv, onEdit, onDelete, onInstall, onReplace, owned, authenticated, onPublish,
   } = props;
   const [expanded, setExpanded] = useState(false);
   const classes = useStyles();
@@ -123,6 +124,20 @@ export default function ShortCut(props) {
         </ExpansionPanelDetails>
         <Divider />
         <ExpansionPanelActions>
+          {type === 'commu' ? null : (
+            <Tooltip title={!authenticated ? 'Sign in to submit' : (description.length === 0 || !icon ? 'Description and icon are required to publish' : '')}>
+              <span>
+                <IconButton
+                  disabled={!authenticated || description.length === 0 || !icon}
+                  title="Publish"
+                  onClick={() => onPublish()}
+                >
+                  <CloudUploadIcon />
+                </IconButton>
+              </span>
+            </Tooltip>
+
+          )}
           <IconButton
             title={type === 'own' ? 'Edit' : 'See on GitHub'}
             color={type === 'own' ? 'primary' : 'inherit'}
@@ -130,7 +145,7 @@ export default function ShortCut(props) {
               if (type === 'own') {
                 onEdit();
               } else {
-                shell.openExternal(`https://github.com/kevincastejon/community-shortcuts/blob/master/shortcuts/${name}.json`);
+                shell.openExternal(`https://github.com/click-it-right-community/community-shortcuts/blob/master/shortcuts/${name}.json`);
               }
             }}
           >
@@ -162,6 +177,7 @@ export default function ShortCut(props) {
   );
 }
 ShortCut.propTypes = {
+  authenticated: PropTypes.bool,
   type: PropTypes.string,
   icon: PropTypes.string,
   name: PropTypes.string.isRequired,
@@ -176,9 +192,11 @@ ShortCut.propTypes = {
   onEdit: PropTypes.func,
   onInstall: PropTypes.func,
   onReplace: PropTypes.func,
+  onPublish: PropTypes.func,
   owned: PropTypes.bool,
 };
 ShortCut.defaultProps = {
+  authenticated: false,
   type: 'own',
   icon: null,
   owned: false,
@@ -186,4 +204,5 @@ ShortCut.defaultProps = {
   onDelete: null,
   onInstall: null,
   onReplace: null,
+  onPublish: null,
 };

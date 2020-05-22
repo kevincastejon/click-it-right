@@ -16,7 +16,7 @@ const useStyles = makeStyles(() => ({
 
 export default function PublishModal(props) {
   const {
-    onSubmit, onCancel, shortcuts, open, currentGitStep, gitSteps,
+    preSelection, onSubmit, onCancel, shortcuts, open, currentGitStep, gitSteps,
   } = props;
   const classes = useStyles();
   return (
@@ -28,6 +28,7 @@ export default function PublishModal(props) {
       {!shortcuts ? <div /> : (
         <div>
           <PublishForm
+            preSelection={preSelection}
             shortcuts={shortcuts}
             gitSteps={gitSteps}
             currentGitStep={currentGitStep}
@@ -44,6 +45,7 @@ export default function PublishModal(props) {
   );
 }
 PublishModal.propTypes = {
+  preSelection: PropTypes.number,
   shortcuts: PropTypes.arrayOf(PropTypes.shape({
     icon: PropTypes.string,
     name: PropTypes.string.isRequired,
@@ -67,5 +69,6 @@ PublishModal.propTypes = {
   onCancel: PropTypes.func.isRequired,
 };
 PublishModal.defaultProps = {
+  preSelection: -1,
   shortcuts: null,
 };

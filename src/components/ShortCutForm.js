@@ -94,7 +94,7 @@ export default function ShortCutForm(props) {
           </Button>
           <div>
             <TextField
-              onChange={(e) => setPname(e.target.value.trim().replace(/[^a-zA-Z0-9_-]/g, ''))}
+              onChange={(e) => setPname(e.target.value.trimStart().replace(/ /g, '_').replace(/[^a-zA-Z0-9_-]/g, ''))}
               required
               placeholder="Enter a context menu label"
               label="Name"
