@@ -1,6 +1,10 @@
-# click-it-right
+# Click-It Right!
+
+![logo](./src/assets/img/logo_title_small.png)
 
 `Click-it Right!` is a free, open-source, collaborative app to easily **create** and **share** Windows **contextual menu shortcuts**. With a straight-forward interface, it allows you to simply open your favourite application or script by right-clicking it without having to deal directly with the Registry.
+
+![preview](https://repository-images.githubusercontent.com/264091076/766e3300-9c7d-11ea-984a-f175b6975a1c)
 
 ## Install
 Simply use the installer hosted on GitHub last release.
